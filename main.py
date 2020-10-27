@@ -28,37 +28,50 @@ def push_to_stack(val):
     else:
         print("Stack overflow.")
 
-def exceptional_parse(i):
+def exceptional_parse(input_to_parse):
     '''
         Define an exceptional parse function for items that aren't covered
         by the typical parse where input is split by whitespace. This parses
-        input character by character.
+        input character by character to build up a split expression that
+        will be parsed.
+
+        It was hard to reconstruct how things were parsed when there are no
+        whitespaces. The best reconstruction I have is that if the element
+        is a digit, then it is added to the temporary digits. If it is an
+        operator, first we check if the next element is a digit if it is then
+        we add that number to the expression first and then add the operator.
+        This appears to replicate the behaviour of the sprn
     '''
+    legal_operators = ['+', '-', '*', '/', '%', '^']
+
+    # Initialise a temporary holder for an expression, a temporary number,
+    # and a temporary operator.
     temp_exp = []
     temp_num = ""
-    for j in list(i):
+    temp_operator = ""
+    for j in list(input_to_parse):
         if j.isdigit():
             temp_num += j
         else:
             if temp_num != "":
                 temp_exp.append(temp_num)
                 temp_num = ""
-            try:
-                temp_result = int(eval(''.join(temp_exp)))
-                temp_exp = []
-                temp_exp.append(str(temp_result))
-            except:
-                pass
-            if j != " ":
+                if temp_operator != "":
+                    temp_exp.append(temp_operator)
+                    temp_operator = ""
+            if j in legal_operators:
+                if temp_operator != "":
+                    temp_exp.append(temp_operator)
+                temp_operator = j
+            elif j != " ":
                 temp_exp.append(j)
+
     if temp_num != "":
         temp_exp.append(temp_num)
-    try:
-        temp_result = int(eval(''.join(temp_exp)))
-        temp_exp = []
-        temp_exp.append(str(temp_result))
-    except:
-        pass
+    if temp_operator != "":
+        temp_exp.append(temp_operator)
+
+
     return temp_exp
 
 def parse(element):
@@ -89,13 +102,6 @@ def parse(element):
     except ValueError:
         pass
 
-    # If value is an expression push result to the stack, else pass
-    try:
-        val: int = eval(element)
-        push_to_stack(val)
-        return 0
-    except:
-        pass
 
     # If value is in the legal operators check if there are sufficient
     # values on the stack then pop those and apply operand function
@@ -146,18 +152,14 @@ def operands(val1, val2, operator):
         the result of that operation back onto the stack.
     '''
     # Exceptional case for power operator to call pow function.
-    if operator == '^':
-        result = pow(val2, val1)
+    expression = str(val2) + operator + str(val1)
+    try:
+        result = int(eval(expression))
         push_to_stack(result)
-    else:
-        expression = str(val2) + operator + str(val1)
-        try:
-            result = int(eval(expression))
-            push_to_stack(result)
-        except ZeroDivisionError:
-            print("Divide by 0.")
-            main_stack.append(val2)
-            main_stack.append(val1)
+    except ZeroDivisionError:
+        print("Divide by 0.")
+        main_stack.append(val2)
+        main_stack.append(val1)
 
 
 def main():
