@@ -49,10 +49,15 @@ def exceptional_parse(input_to_parse):
     temp_exp = []
     temp_num = ""
     temp_operator = ""
+
+    # Iterate through characters in the input
     for j in list(input_to_parse):
+
+        # If the character is a digit, concatenate with temporary number
         if j.isdigit():
             temp_num += j
         else:
+            # End of the number has been reached, so append to the expression
             if temp_num != "":
                 temp_exp.append(temp_num)
                 temp_num = ""
@@ -167,11 +172,13 @@ def main():
         The main function starts the calculator then while it is running
         accepts input. The input is split by whitespaces, the parser then
         attempts to parse each element. If the parser can parse that element
-        it will return 0. If it gets to the end and the parser cannot parse
-        the element it is likely that there is no whitespace and it is a
-        complicated expression. That element is then passed to the exceptional
-        parser which returns an array of elements split based on conditions
-        that mimic the behaviour of the srpn.
+        it will return 0.
+
+        If it gets to the end and the parser cannot parse the element it is
+        likely that there is no whitespace and it is a complicated expression.
+        That element is then passed to the exceptional parser which returns an
+        array of elements split based on conditions that mimic the behaviour of
+        the srpn.
     '''
     print("You can now start interacting with the SRPN calculator")
     while True:
