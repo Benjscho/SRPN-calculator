@@ -1,10 +1,8 @@
 from collections import deque
-import re
 from random import randrange
 
-# Initialise global stack and comment flag
+# Initialise global stack
 main_stack = deque(maxlen=23)
-comment_flag: bool = False
 
 
 def overflow_check(value):
@@ -35,48 +33,45 @@ def exceptional_parse(input_to_parse):
         input character by character to build up a split expression that
         will be parsed.
 
-        It was hard to reconstruct how things were parsed when there are no
-        whitespaces. The best reconstruction I have is that if the element
-        is a digit, then it is added to the temporary digits. If it is an
-        operator, first we check if the next element is a digit if it is then
-        we add that number to the expression first and then add the operator.
-        This appears to replicate the behaviour of the sprn
+        When input is not space separated, The parse order of the version to
+        emulate runs:
+        1) If it's a number, push it to the stack
+        2) If it's a mathematical operator, perform them in reverse input order
+        3) If it's a legal special operator perform it
+        4) If it's anything else print the rejection message.
+
+        In my best emulation of this, when there is no whitespace, this program
+        iterates through character by character. If it is a number it adds it
+        to the temporary numbers, and if there is an operator that is also
     '''
     legal_operators = ['+', '-', '*', '/', '%', '^']
 
-    # Initialise a temporary holder for an expression, a temporary number,
+    # Initialise temporary holders for numbers, and operators.
     # and a temporary operator.
-    temp_exp = []
-    temp_num = ""
-    temp_operator = ""
+    temp_nums = []
+    temp_ops = []
+    temp_number = ""
 
     # Iterate through characters in the input
     for j in list(input_to_parse):
 
         # If the character is a digit, concatenate with temporary number
         if j.isdigit():
-            temp_num += j
+            temp_number += j
         else:
-            # End of the number has been reached, so append to the expression
-            if temp_num != "":
-                temp_exp.append(temp_num)
-                temp_num = ""
-                if temp_operator != "":
-                    temp_exp.append(temp_operator)
-                    temp_operator = ""
+            # End of the number has been reached, so append to numbers.
+            if temp_number != "":
+                temp_nums.append(temp_number)
+                temp_number = ""
             if j in legal_operators:
-                if temp_operator != "":
-                    temp_exp.append(temp_operator)
-                temp_operator = j
+                temp_ops.append(j)
             elif j != " ":
-                temp_exp.append(j)
+                parse(j)
 
-    if temp_num != "":
-        temp_exp.append(temp_num)
-    if temp_operator != "":
-        temp_exp.append(temp_operator)
+    if temp_number != "":
+        temp_nums.append(temp_number)
 
-
+    temp_exp = temp_nums + temp_ops[::-1]
     return temp_exp
 
 def parse(element):
@@ -84,20 +79,40 @@ def parse(element):
         This function iterates through the operands in each statement and
         performs the functions accordingly.
     '''
-    legal_operators = ['+', '-', '*', '/', '%', '**']
-    global comment_flag
+    legal_operators = ['+', '-', '*', '/', '%', '^']
 
-    # If comment symbol received switch comment flag and skip input until
-    # the next comment symbol is received.
-    if element == '#':
-        comment_flag = not comment_flag
-        return 0
-    if comment_flag == True:
-        return 0
 
-    # Replace '^' with '**'. This is so powers are parsed properly
-    if '^' in element:
-        element = element.replace("^","**")
+    # Check if number is octal, if so, convert from octal to int and continue
+    '''
+        This check is slightly ugly so it requires explanation. First
+        the code checks if this element is flagged as an octal. Numbers are
+        flagged as octal by the prefix '0'. If a number is prefixed '0' it is
+        parsed as an octal. In order to do that the element is split into a
+        list, checks if that list has more than two elements, then checks if
+        the first element is a 0, or if the first two elements are -0, if so
+        it tries to convert the element from a string to an octal.
+
+        The difficulty is bad octals e.g., 09, are ignored by the sprn. So
+        to mimic that behaviour, if an exception is thrown by the octal, but
+        it could be parsed as a regular int the parse function exits with a 1
+        error.
+
+    '''
+    octal_check = list(element)
+    if len(octal_check) > 1:
+        octal_bools = [\
+            (octal_check[0] == '0'),\
+            (octal_check[0] == '-' and octal_check[1] == '0')]
+
+        if (octal_bools[0] or octal_bools[1]):
+            try:
+                element = int(element, 8)
+            except:
+                try:
+                    int(element)
+                    return 1
+                except:
+                    pass
 
     # If value is an integer push to the stack, otherwise pass
     try:
@@ -111,6 +126,16 @@ def parse(element):
     # If value is in the legal operators check if there are sufficient
     # values on the stack then pop those and apply operand function
     if element in legal_operators:
+        # Replace '^' with '**'. This is so powers are parsed properly
+        # additionally ensure that the top of the stack is positive to show
+        # an error if a negative power is called.
+        if '^' in element:
+            element = element.replace("^","**")
+            try:
+                assert main_stack[-1] >= 1
+            except:
+                print("Negative power.")
+                return 0
         if len(main_stack) > 1:
             val1 = main_stack.pop()
             val2 = main_stack.pop()
@@ -129,6 +154,9 @@ def parse(element):
 
     # Parse 'd' to print the stack in order.
     elif element == 'd':
+        if len(main_stack) == 0:
+            print(-2147483648)
+            return 0
         for element in main_stack:
             print(element)
         return 0
@@ -179,7 +207,11 @@ def main():
         That element is then passed to the exceptional parser which returns an
         array of elements split based on conditions that mimic the behaviour of
         the srpn.
+
+        The comment flag is interpreted outside of the parse function due to
+        behaviour found when inputs such as '#2' or '#2' are input.
     '''
+    comment_flag = False
     print("You can now start interacting with the SRPN calculator")
     while True:
 
@@ -187,6 +219,18 @@ def main():
         split_input = input_to_parse.split()
         for element in split_input:
 
+            # If comment symbol received switch comment flag and skip input until
+            # the next comment symbol is received. Stop processing for '#' element.
+            if element == '#':
+                comment_flag = not comment_flag
+                continue
+            if comment_flag == True:
+                break
+
+            # Call the parse statement on the element and get the return value.
+            # If the return value is 1 it means the expression needs to be
+            # split by the exceptional parser, before being run through parse
+            # again.
             result = parse(element)
             if result == 1:
                 secondary_input = exceptional_parse(element)
@@ -194,5 +238,7 @@ def main():
                     parse(element)
 
 
-main()
+# Finally call the main function to run the program and start the calculator
+if __name__ == "__main__":
+    main()
 
