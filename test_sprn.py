@@ -290,3 +290,20 @@ def test_21():
         result = sprn.test_main(x)
     assert output == y
     assert result[-1] == 2621577
+
+def test_22():
+    x = "-0162-561"
+    y = []
+    with Capturing() as output:
+        result = sprn.test_main(x)
+    assert output == y
+    assert result[-1] == -675
+
+def test_23():
+    x = "-14+0^45%"
+    y = ["Stack underflow."]
+    with Capturing() as output:
+        result = sprn.test_main(x)
+    assert output == y
+    assert result[-1] == -14
+

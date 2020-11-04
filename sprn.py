@@ -6,53 +6,56 @@ main_stack = deque(maxlen=23)
 legal_operators = ['+', '-', '*', '/', '%', '^']
 comment_flag = False
 random_ints = [1804289383,
-        846930886,
-        1681692777,
-        1714636915,
-        1957747793,
-        424238335,
-        719885386,
-        1649760492,
-        596516649,
-        1189641421,
-        1025202362,
-        1350490027,
-        783368690,
-        1102520059,
-        2044897763,
-        1967513926,
-        1365180540,
-        1540383426,
-        304089172,
-        1303455736,
-        35005211,
-        521595368,
-        1804289383]
+               846930886,
+               1681692777,
+               1714636915,
+               1957747793,
+               424238335,
+               719885386,
+               1649760492,
+               596516649,
+               1189641421,
+               1025202362,
+               1350490027,
+               783368690,
+               1102520059,
+               2044897763,
+               1967513926,
+               1365180540,
+               1540383426,
+               304089172,
+               1303455736,
+               35005211,
+               521595368,
+               1804289383]
 random_int_counter = 0
 
+
 def overflow_check(value):
-    '''
+    """
         This function provides a standin to check whether the value is within
         the int limits in the original sprn
-    '''
+    """
     if value > 2147483647:
         value = 2147483647
     elif value < -2147483648:
         value = -2147483648
     return value
 
+
 def push_to_stack(val):
-    '''
+    """
         Checks if the stack is less than the max stack length, and if so
         pushes the value to the stack after checking for overflows.
-    '''
+    """
     if len(main_stack) < main_stack.maxlen:
         main_stack.append(overflow_check(val))
     else:
         print("Stack overflow.")
 
+
 def exceptional_parse(input_to_parse):
-    '''
+    """
         Define an exceptional parse function for items that aren't covered
         by the typical parse where input is split by whitespace. This parses
         input character by character to build up a split expression that
@@ -64,17 +67,23 @@ def exceptional_parse(input_to_parse):
         2) If it's a mathematical operator, perform them in reverse input order
         3) If it's a legal special operator perform it
         4) If it's anything else print the error message.
-    '''
+    """
     global legal_operators
     # Initialise temporary holders for numbers, and operators.
     temp_nums = []
     temp_ops = []
     temp_exp = []
     temp_number = ""
+    negative_flag = False
+
+    elements = list(input_to_parse)
+
+    # This sets the negative flag if the first number is negative.
+    if elements[0] == "-" and elements[1].isdigit():
+        negative_flag = True
 
     # Iterate through characters in the input
     for j in list(input_to_parse):
-
         # If the character is a digit, concatenate with temporary number
         if j.isdigit():
             temp_number += j
@@ -84,8 +93,15 @@ def exceptional_parse(input_to_parse):
             # expression so far with numbers followed by operators in reverse
             # order.
             if temp_number != "":
-                temp_nums.append(temp_number)
-                temp_number = ""
+                if negative_flag:
+                    temp_nums.append("-" + temp_number)
+                    temp_number = ""
+                    temp_ops = []
+                    negative_flag = False
+                else:
+                    temp_nums.append(temp_number)
+                    temp_number = ""
+
                 if len(temp_nums) == 2:
                     temp_exp += temp_nums
                     temp_exp += temp_ops[::-1]
@@ -116,11 +132,12 @@ def exceptional_parse(input_to_parse):
     temp_exp += temp_nums + temp_ops[::-1]
     return temp_exp
 
+
 def parse(element):
-    '''
+    """
         This function iterates through the operands in each statement and
         performs the functions accordingly.
-    '''
+    """
     global legal_operators
     global random_ints
     global random_int_counter
@@ -147,16 +164,16 @@ def parse(element):
     if element == '#':
         comment_flag = not comment_flag
         return
-    if comment_flag == True:
+    if comment_flag:
         return
 
     octal_check = list(element)
     if len(octal_check) > 1:
-        octal_bools = [\
-            (octal_check[0] == '0'),\
+        octal_bools = [
+            (octal_check[0] == '0'),
             (octal_check[0] == '-' and octal_check[1] == '0')]
 
-        if (octal_bools[0] or octal_bools[1]):
+        if octal_bools[0] or octal_bools[1]:
             try:
                 element = int(element, 8)
             except:
@@ -175,7 +192,6 @@ def parse(element):
     except:
         pass
 
-
     # If value is in the legal operators check if there are sufficient
     # values on the stack then pop those and apply operand function
     if element in legal_operators:
@@ -183,7 +199,7 @@ def parse(element):
         # additionally ensure that the top of the stack is positive to show
         # an error if a negative power is called.
         if '^' in element:
-            element = element.replace("^","**")
+            element = element.replace("^", "**")
             try:
                 assert main_stack[-1] >= 1
             except:
@@ -235,12 +251,13 @@ def parse(element):
     else:
         return 1
 
+
 def operands(val1, val2, operator):
-    '''
+    """
         This function takes two values popped from the stack, and seeks to
         perform the function indicated by the operator on them. It then pushes
         the result of that operation back onto the stack.
-    '''
+    """
     # Exceptional case for power operator to call pow function.
     expression = str(val2) + operator + str(val1)
     try:
@@ -253,7 +270,7 @@ def operands(val1, val2, operator):
 
 
 def main():
-    '''
+    """
         The main function starts the calculator then while it is running
         accepts input. The input is split by whitespaces, the parser then
         attempts to parse each element. If the parser can parse that element
@@ -264,7 +281,7 @@ def main():
         That element is then passed to the exceptional parser which returns an
         array of elements split based on conditions that mimic the behaviour of
         the srpn.
-    '''
+    """
     print("You can now start interacting with the SRPN calculator")
     while True:
 
@@ -280,8 +297,9 @@ def main():
 
             if result == 1:
                 secondary_input = exceptional_parse(element)
-                for element in secondary_input:
-                    parse(element)
+                for item in secondary_input:
+                    parse(item)
+
 
 def test_main(calculation):
     """
@@ -291,7 +309,6 @@ def test_main(calculation):
     global random_int_counter
     main_stack.clear()
     random_int_counter = 0
-    comment_flag = False
 
     # Replicate main function code
     split_input = calculation.split()
@@ -305,12 +322,11 @@ def test_main(calculation):
 
         if result == 1:
             secondary_input = exceptional_parse(element)
-            for element in secondary_input:
-                parse(element)
+            for item in secondary_input:
+                parse(item)
     return main_stack
 
 
 # Finally call the main function to run the program and start the calculator
 if __name__ == "__main__":
     main()
-
