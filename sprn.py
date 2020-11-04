@@ -3,7 +3,32 @@ from random import randrange
 
 # Initialise global stack
 main_stack = deque(maxlen=23)
-
+legal_operators = ['+', '-', '*', '/', '%', '^']
+comment_flag = False
+random_ints = [1804289383,
+        846930886,
+        1681692777,
+        1714636915,
+        1957747793,
+        424238335,
+        719885386,
+        1649760492,
+        596516649,
+        1189641421,
+        1025202362,
+        1350490027,
+        783368690,
+        1102520059,
+        2044897763,
+        1967513926,
+        1365180540,
+        1540383426,
+        304089172,
+        1303455736,
+        35005211,
+        521595368,
+        1804289383]
+random_int_counter = 0
 
 def overflow_check(value):
     '''
@@ -38,18 +63,13 @@ def exceptional_parse(input_to_parse):
         1) If it's a number, push it to the stack
         2) If it's a mathematical operator, perform them in reverse input order
         3) If it's a legal special operator perform it
-        4) If it's anything else print the rejection message.
-
-        In my best emulation of this, when there is no whitespace, this program
-        iterates through character by character. If it is a number it adds it
-        to the temporary numbers, and if there is an operator that is also
+        4) If it's anything else print the error message.
     '''
-    legal_operators = ['+', '-', '*', '/', '%', '^']
-
+    global legal_operators
     # Initialise temporary holders for numbers, and operators.
-    # and a temporary operator.
     temp_nums = []
     temp_ops = []
+    temp_exp = []
     temp_number = ""
 
     # Iterate through characters in the input
@@ -60,18 +80,40 @@ def exceptional_parse(input_to_parse):
             temp_number += j
         else:
             # End of the number has been reached, so append to numbers.
+            # If there are two numbers in the temp_nums, fill out the temp
+            # expression so far with numbers followed by operators in reverse
+            # order.
             if temp_number != "":
                 temp_nums.append(temp_number)
                 temp_number = ""
+                if len(temp_nums) == 2:
+                    temp_exp += temp_nums
+                    temp_exp += temp_ops[::-1]
+                    temp_nums = []
+                    temp_ops = []
+
+            # If character is in the legal operators, add to the temporary operstors
             if j in legal_operators:
                 temp_ops.append(j)
+            elif j == "=":
+                temp_exp += temp_nums
+                temp_exp.append(j)
+                temp_exp += temp_ops[::-1]
+                temp_nums = []
+                temp_ops = []
+            elif j == "#":
+                print("Unrecognised operator or operand \"" + j + "\".")
             elif j != " ":
-                parse(j)
+                temp_exp += temp_nums
+                temp_exp += temp_ops[::-1]
+                temp_exp.append(j)
+                temp_nums = []
+                temp_ops = []
 
     if temp_number != "":
         temp_nums.append(temp_number)
 
-    temp_exp = temp_nums + temp_ops[::-1]
+    temp_exp += temp_nums + temp_ops[::-1]
     return temp_exp
 
 def parse(element):
@@ -79,8 +121,10 @@ def parse(element):
         This function iterates through the operands in each statement and
         performs the functions accordingly.
     '''
-    legal_operators = ['+', '-', '*', '/', '%', '^']
-
+    global legal_operators
+    global random_ints
+    global random_int_counter
+    global comment_flag
 
     # Check if number is octal, if so, convert from octal to int and continue
     '''
@@ -98,6 +142,14 @@ def parse(element):
         error.
 
     '''
+    # If comment symbol received switch comment flag and skip input until
+    # the next comment symbol is received. Stop processing for '#' element.
+    if element == '#':
+        comment_flag = not comment_flag
+        return
+    if comment_flag == True:
+        return
+
     octal_check = list(element)
     if len(octal_check) > 1:
         octal_bools = [\
@@ -116,10 +168,11 @@ def parse(element):
 
     # If value is an integer push to the stack, otherwise pass
     try:
+        assert octal_check[0] != '+'
         val: int = int(element)
         push_to_stack(val)
         return 0
-    except ValueError:
+    except:
         pass
 
 
@@ -161,15 +214,19 @@ def parse(element):
             print(element)
         return 0
 
-    # Parse 'r' to push random number on stack. Potentially update this
-    # so it gets the same numbers as from rand() in c++ that the old sprn
-    # appears to have.
+    # Parse 'r' to push random number on stack. For the first 23 calls
+    # this will print the 23 randoms that are always produced by the SPRN to
+    # emulate. After that a random int between 1 and 2147483647 is returned.
     elif element == 'r':
-        r = randrange(2147483647)
+        if random_int_counter < 23:
+            r = random_ints[random_int_counter]
+            random_int_counter += 1
+        else:
+            r = randrange(2147483647)
         push_to_stack(r)
         return 0
 
-    # If it's an illegal character print that
+    # If it's an illegal character print the char in question.
     elif len(element) == 1:
         print("Unrecognised operator or operand \"" + element + "\".")
         return 0
@@ -207,11 +264,7 @@ def main():
         That element is then passed to the exceptional parser which returns an
         array of elements split based on conditions that mimic the behaviour of
         the srpn.
-
-        The comment flag is interpreted outside of the parse function due to
-        behaviour found when inputs such as '#2' or '#2' are input.
     '''
-    comment_flag = False
     print("You can now start interacting with the SRPN calculator")
     while True:
 
@@ -219,23 +272,42 @@ def main():
         split_input = input_to_parse.split()
         for element in split_input:
 
-            # If comment symbol received switch comment flag and skip input until
-            # the next comment symbol is received. Stop processing for '#' element.
-            if element == '#':
-                comment_flag = not comment_flag
-                continue
-            if comment_flag == True:
-                break
-
             # Call the parse statement on the element and get the return value.
             # If the return value is 1 it means the expression needs to be
             # split by the exceptional parser, before being run through parse
             # again.
             result = parse(element)
+
             if result == 1:
                 secondary_input = exceptional_parse(element)
                 for element in secondary_input:
                     parse(element)
+
+def test_main(calculation):
+    """
+    Function that imitates the main function on a test calculation input.
+    """
+    # Reset global variables that change so testing is consistent
+    global random_int_counter
+    main_stack.clear()
+    random_int_counter = 0
+    comment_flag = False
+
+    # Replicate main function code
+    split_input = calculation.split()
+    for element in split_input:
+
+        # Call the parse statement on the element and get the return value.
+        # If the return value is 1 it means the expression needs to be
+        # split by the exceptional parser, before being run through parse
+        # again.
+        result = parse(element)
+
+        if result == 1:
+            secondary_input = exceptional_parse(element)
+            for element in secondary_input:
+                parse(element)
+    return main_stack
 
 
 # Finally call the main function to run the program and start the calculator
