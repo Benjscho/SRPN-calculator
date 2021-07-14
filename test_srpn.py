@@ -348,3 +348,11 @@ def test_25():
         result = srpn.test_main(x)
     assert output == y
     assert result[-1] == 1
+
+def test_26():
+    x = "2+2^2*5"
+    y = []
+    with Capturing() as output:
+        result = srpn.test_main(x)
+    assert output == y
+    assert result[-1] == 30
